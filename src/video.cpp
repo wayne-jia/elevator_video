@@ -11,6 +11,9 @@
 #include <iostream>
 #include <sstream>
 
+#define PRJ_PATH "./"
+#define SCR_RES_W         768
+#define SCR_RES_H         1024
 #define SINGLE_NUM_X      353
 #define SINGLE_NUM_MID_X  (SINGLE_NUM_X - 51)
 
@@ -101,8 +104,13 @@ static bool is_target_sama5d4()
     return false;
 }
 
+
+
 int main(int argc, char** argv)
 {
+    std::vector<std::string> ad_lines;
+    egt::AnimationSequence ad_sequence{true};
+
     cxxopts::Options options(argv[0], "play video file");
     options.add_options()
     ("h,help", "Show help")
@@ -124,12 +132,18 @@ int main(int argc, char** argv)
     auto input(args["input"].as<std::string>());
 
     egt::Application app(argc, argv);
-#ifdef EXAMPLEDATA
-    egt::add_search_path(EXAMPLEDATA);
-#endif
+
+    egt::add_search_path(PRJ_PATH);
 
     egt::TopWindow win;
     win.background(egt::Image("file:bg.png"));
+
+    auto ad_box = std::make_shared<egt::Frame>();
+    // ad_box->fill_flags(egt::Theme::FillFlag::blend);
+    // ad_box->color(egt::Palette::ColorId::label_bg, egt::Color(0x00008096));
+    ad_box->resize(egt::Size(680, 95));
+    ad_box->move(egt::Point(30, 900));
+    win.add(ad_box);
 
     egt::ImageLabel logo(egt::Image("file:logo.png"));
     logo.move(egt::Point(28, 32));
@@ -239,6 +253,82 @@ int main(int argc, char** argv)
         show_floor_num();
     };
 
+    ///=============Handle ad scrolling  text================
+    auto scrolling_ad = [&ad_lines, &ad_box, &ad_sequence](){
+        std::string line;
+
+        std::ifstream inf(PRJ_PATH"taglines.txt", std::ios::binary);
+        if (!inf.is_open())
+        {
+            std::cerr << "taglines.txt open failed!" << std::endl;
+            return;
+        }
+
+        while (std::getline(inf, line))
+        {
+            if (!line.empty())
+                ad_lines.push_back(line);
+
+            //std::cout << line << std::endl;
+        }
+
+        if (!ad_lines.empty())
+        {
+
+            auto label = std::make_shared<egt::Label>();
+            label->color(egt::Palette::ColorId::label_text, egt::Palette::white);
+            label->font(egt::Font("Noto Sans CJK SC", 26));
+            ad_box->add(label);
+#ifdef LABEL_BG_COLOR
+            label->fill_flags(egt::Theme::FillFlag::blend);
+            //label->border(3);
+            label->border_radius(10);
+            label->color(egt::Palette::ColorId::label_text, egt::Palette::white);
+            label->color(egt::Palette::ColorId::label_bg, egt::Color(0x00008096));
+            label->color(egt::Palette::ColorId::border, egt::Color(0x000080ff));
+#endif
+
+            auto minx = 0 - ad_box->width();
+            auto maxx = SCR_RES_W;
+            auto half = (SCR_RES_W - ad_box->width()) / 2;
+
+            auto in = std::make_shared<egt::PropertyAnimator>(maxx, half,
+                                                                std::chrono::seconds(3),
+                                                                egt::easing_exponential_easeout);
+            in->on_change([&ad_box](int value)
+            {
+                ad_box->x(value);
+            });
+
+            auto delay1 = std::make_shared<egt::AnimationDelay>(std::chrono::seconds(2));
+
+            auto out = std::make_shared<egt::PropertyAnimator>(half + 1, minx,
+                                                                std::chrono::seconds(3),
+                                                                egt::easing_exponential_easeout);
+            out->reverse(true);
+            out->on_change([&ad_box, &ad_lines, out, label](int value)
+            {
+                ad_box->x(value);
+
+                static size_t index = 0;
+                if (egt::detail::float_equal(value, out->ending()))
+                {
+                    label->text(ad_lines[index]);
+                    if (++index >= ad_lines.size())
+                        index = 0;
+                }
+            });
+
+            auto delay2 = std::make_shared<egt::AnimationDelay>(std::chrono::seconds(2));
+
+            ad_sequence.add(in);
+            ad_sequence.add(delay1);
+            ad_sequence.add(out);
+            ad_sequence.add(delay2);
+            ad_sequence.start();
+        }
+    };
+
     // One second periodic timer
     auto sec_timer = std::make_shared<egt::PeriodicTimer>(std::chrono::milliseconds(1000));
     sec_timer->on_timeout([](){ sec_tick++; });
@@ -254,6 +344,7 @@ int main(int argc, char** argv)
             {
                 sec_tick = 0;
                 sec_timer->start();
+                scrolling_ad();
                 appState = APP_STATE_DOOR_OPEN; 
                 break;
             }
