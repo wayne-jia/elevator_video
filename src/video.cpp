@@ -136,7 +136,12 @@ int main(int argc, char** argv)
     egt::add_search_path(PRJ_PATH);
 
     egt::TopWindow win;
-    win.background(egt::Image("file:bg.png"));
+    //win.background(egt::Image("file:bg.png"));
+    win.color(egt::Palette::ColorId::bg, egt::Palette::black);
+    std::cout << "Screen size: " << win.size() << std::endl;
+
+    egt::ImageLabel bg(egt::Image("file:bg.png"));
+    win.add(bg);
 
     auto ad_box = std::make_shared<egt::Frame>();
     // ad_box->fill_flags(egt::Theme::FillFlag::blend);
@@ -279,6 +284,7 @@ int main(int argc, char** argv)
             label->color(egt::Palette::ColorId::label_text, egt::Palette::white);
             label->font(egt::Font("Noto Sans CJK SC", 26));
             ad_box->add(label);
+
 #ifdef LABEL_BG_COLOR
             label->fill_flags(egt::Theme::FillFlag::blend);
             //label->border(3);
