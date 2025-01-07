@@ -14,6 +14,10 @@
 #define PRJ_PATH "./"
 #define SCR_RES_W         768
 #define SCR_RES_H         1024
+#define VIDEO_X           20
+#define VIDEO_Y           277
+#define VIDEO_W           728
+#define VIDEO_H           560
 #define SINGLE_NUM_X      353
 #define SINGLE_NUM_MID_X  (SINGLE_NUM_X - 51)
 
@@ -36,7 +40,6 @@ static uint32_t sec2 = 0;
 static bool door_open = false;
 static bool overloaded = false;
 static uint32_t current_floor = 13;
-
 
 static const std::string digi_str[] = {
     "file:0.png",
@@ -79,12 +82,6 @@ static std::string line_break(const std::string& in, size_t width = 50)
     return out + tmp;
 }
 
-template<class T>
-static inline T ns2ms(T n)
-{
-    return n / 1000000UL;
-}
-
 static bool is_target_sama5d4()
 {
     std::ifstream infile("/proc/device-tree/model");
@@ -103,8 +100,6 @@ static bool is_target_sama5d4()
     }
     return false;
 }
-
-
 
 int main(int argc, char** argv)
 {
@@ -179,7 +174,6 @@ int main(int argc, char** argv)
     auto overload = std::make_shared<egt::Label>("超载");
     overload->font(egt::Font("Noto Sans CJK SC", 24));
     overload->move(egt::Point(590, 216));
-    //overload->hide();
     win.add(overload);
 
     egt::Label errlabel;
@@ -188,17 +182,15 @@ int main(int argc, char** argv)
     errlabel.text_align(egt::AlignFlag::center_horizontal | egt::AlignFlag::top);
     win.add(errlabel);
 
-    // player after label to handle drag
     egt::VideoWindow player(size, format, egt::WindowHint::overlay);
-    //player.move_to_center(win.center());
-    player.move(egt::Point(15, 281));
-    player.volume(5);
+    player.move(egt::Point(VIDEO_X, VIDEO_Y));
+    player.scale(static_cast<float>(VIDEO_W) / player.width(), static_cast<float>(VIDEO_H) / player.height());
     win.add(player);
-
 
     egt::Label cpulabel("CPU: 0%");
     cpulabel.color(egt::Palette::ColorId::label_text, egt::Palette::white);
-    cpulabel.margin(25);
+    cpulabel.margin(45);
+    cpulabel.font(egt::Font(15));
     bottom(left(cpulabel));
     win.add(cpulabel);
 
@@ -217,7 +209,6 @@ int main(int argc, char** argv)
     win.on_show([&player, input]()
     {
         player.media(input);
-
         player.play();
         player.loopback(true);
     });
@@ -273,8 +264,6 @@ int main(int argc, char** argv)
         {
             if (!line.empty())
                 ad_lines.push_back(line);
-
-            //std::cout << line << std::endl;
         }
 
         if (!ad_lines.empty())
@@ -287,7 +276,7 @@ int main(int argc, char** argv)
 
 #ifdef LABEL_BG_COLOR
             label->fill_flags(egt::Theme::FillFlag::blend);
-            //label->border(3);
+            label->border(3);
             label->border_radius(10);
             label->color(egt::Palette::ColorId::label_text, egt::Palette::white);
             label->color(egt::Palette::ColorId::label_bg, egt::Color(0x00008096));
@@ -339,7 +328,6 @@ int main(int argc, char** argv)
     auto sec_timer = std::make_shared<egt::PeriodicTimer>(std::chrono::milliseconds(1000));
     sec_timer->on_timeout([](){ sec_tick++; });
 
-    
     ///============ Main timer for state machine =============
     egt::PeriodicTimer main_timer(std::chrono::milliseconds(50));
     main_timer.on_timeout([&]() 
@@ -510,7 +498,6 @@ int main(int argc, char** argv)
     ///============ Main timer for state machine end =============
 
     win.show();
-    //win.layout();
     player.show();
 
     return app.run();

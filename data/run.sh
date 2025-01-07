@@ -1,1 +1,1 @@
-./video -i file:microchip_corporate_mpeg2.avi --width 738 --height 555
+./video -i file:microchip_corporate_mpeg2.avi
